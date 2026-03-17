@@ -13,6 +13,7 @@ from watchtower.work_items import (
     load_work_item,
     work_item_path,
 )
+from watchtower.status import status_payload
 from watchtower.workspace import AVAILABLE_COMMANDS, doctor_payload, ensure_workspace_manifest
 
 
@@ -48,6 +49,31 @@ def _run_init(args: argparse.Namespace) -> int:
     print(f"WatchTower workspace {action}")
     print(f"state_root: {manifest['state_root']}")
     print(f"workspace_manifest_path: {manifest['manifest_path']}")
+    return 0
+
+
+def _run_status(args: argparse.Namespace) -> int:
+    payload = status_payload()
+    if args.format == "json":
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    print("WatchTower status")
+    print(f"bootstrap_stage: {payload['bootstrap_stage']}")
+    print(f"workspace_status: {payload['workspace_status']}")
+    print(f"work_item_count: {payload['work_item_count']}")
+    counts_by_status = payload["counts_by_status"]
+    rendered_counts = (
+        ", ".join(f"{status}={count}" for status, count in counts_by_status.items())
+        if counts_by_status
+        else "none"
+    )
+    print(f"counts_by_status: {rendered_counts}")
+    recent_items = payload["recent_work_items"]
+    if recent_items:
+        print("recent_work_items:")
+        for item in recent_items:
+            print(f"- {item['slug']}: {item['status']} :: {item['title']}")
     return 0
 
 
@@ -174,6 +200,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Select human-readable or JSON output.",
     )
     doctor.set_defaults(handler=_run_doctor)
+
+    status = subparsers.add_parser(
+        "status",
+        help="Report the current workspace and work-item snapshot.",
+    )
+    status.add_argument(
+        "--format",
+        choices=("human", "json"),
+        default="human",
+        help="Select human-readable or JSON output.",
+    )
+    status.set_defaults(handler=_run_status)
 
     init = subparsers.add_parser(
         "init",

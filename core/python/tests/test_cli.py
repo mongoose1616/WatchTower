@@ -32,6 +32,7 @@ def test_doctor_json_reports_repo_bootstrap_status(
     assert payload["workspace_status"] == "missing"
     assert payload["available_commands"] == [
         "doctor",
+        "status",
         "init",
         "work start",
         "work list",
@@ -88,6 +89,24 @@ def test_work_list_requires_initialized_workspace(
     assert exit_code == 1
     assert payload["status"] == "error"
     assert "watchtower init" in payload["message"].lower()
+
+
+def test_status_json_reports_missing_workspace_and_zero_work_items(
+    capsys,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo_root = _prepare_repo_root(tmp_path)
+    monkeypatch.setenv("WATCHTOWER_REPO_ROOT", str(repo_root))
+
+    exit_code = main(["status", "--format", "json"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 0
+    assert payload["workspace_status"] == "missing"
+    assert payload["work_item_count"] == 0
+    assert payload["counts_by_status"] == {}
+    assert payload["recent_work_items"] == []
 
 
 def test_work_start_requires_initialized_workspace(
@@ -272,3 +291,19 @@ def test_work_list_show_and_complete_manage_local_work_item_lifecycle(
 
     assert second_complete_exit_code == 0
     assert second_complete_payload["action"] == "already_completed"
+
+    status_exit_code = main(["status", "--format", "json"])
+    status_payload = json.loads(capsys.readouterr().out)
+
+    assert status_exit_code == 0
+    assert status_payload["workspace_status"] == "initialized"
+    assert status_payload["work_item_count"] == 2
+    assert status_payload["counts_by_status"] == {"completed": 1, "planned": 1}
+    assert {item["slug"] for item in status_payload["recent_work_items"]} == {
+        "first_slice",
+        "second_slice",
+    }
+    assert any(
+        item["slug"] == "first_slice" and item["status"] == "completed"
+        for item in status_payload["recent_work_items"]
+    )

@@ -10,6 +10,7 @@ from pathlib import Path
 _REPO_ROOT_ENV = "WATCHTOWER_REPO_ROOT"
 AVAILABLE_COMMANDS = (
     "doctor",
+    "status",
     "init",
     "work start",
     "work list",
