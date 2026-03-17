@@ -77,6 +77,16 @@ python -m watchtower.cli work show --slug first_slice --format json
 
 ```sh
 cd core/python
+python -m watchtower.cli work note --slug first_slice --message "Resume from the last validated checkpoint"
+```
+
+```sh
+cd core/python
+python -m watchtower.cli work note --slug first_slice --message "Resume from the last validated checkpoint" --format json
+```
+
+```sh
+cd core/python
 python -m watchtower.cli work complete --slug first_slice --summary "Closed after validation"
 ```
 
@@ -93,6 +103,6 @@ python -m pytest
 ## Notes
 
 - The current bootstrap keeps the workspace dependency-light.
-- The current CLI surfaces are `watchtower doctor`, `watchtower status`, `watchtower init`, `watchtower work start`, `watchtower work list`, `watchtower work show`, and `watchtower work complete`.
+- The current CLI surfaces are `watchtower doctor`, `watchtower status`, `watchtower init`, `watchtower work start`, `watchtower work list`, `watchtower work show`, `watchtower work note`, and `watchtower work complete`.
 - Local managed workspace state lives under `.watchtower/`.
 - Later slices can add richer workflow commands once the product boundary is better defined.

@@ -15,6 +15,7 @@ AVAILABLE_COMMANDS = (
     "work start",
     "work list",
     "work show",
+    "work note",
     "work complete",
 )
 

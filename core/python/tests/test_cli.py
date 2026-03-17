@@ -37,6 +37,7 @@ def test_doctor_json_reports_repo_bootstrap_status(
         "work start",
         "work list",
         "work show",
+        "work note",
         "work complete",
     ]
 
@@ -134,6 +135,54 @@ def test_work_start_requires_initialized_workspace(
     assert exit_code == 1
     assert payload["status"] == "error"
     assert "watchtower init" in payload["message"].lower()
+
+
+def test_work_note_requires_initialized_workspace_and_existing_item(
+    capsys,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo_root = _prepare_repo_root(tmp_path)
+    monkeypatch.setenv("WATCHTOWER_REPO_ROOT", str(repo_root))
+
+    exit_code = main(
+        [
+            "work",
+            "note",
+            "--slug",
+            "first_slice",
+            "--message",
+            "Need context.",
+            "--format",
+            "json",
+        ]
+    )
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert payload["status"] == "error"
+    assert "watchtower init" in payload["message"].lower()
+
+    assert main(["init", "--format", "json"]) == 0
+    capsys.readouterr()
+
+    missing_exit_code = main(
+        [
+            "work",
+            "note",
+            "--slug",
+            "missing_slice",
+            "--message",
+            "Need context.",
+            "--format",
+            "json",
+        ]
+    )
+    missing_payload = json.loads(capsys.readouterr().out)
+
+    assert missing_exit_code == 1
+    assert missing_payload["status"] == "error"
+    assert "unknown work item" in missing_payload["message"].lower()
 
 
 def test_work_start_json_creates_work_item_record(
@@ -245,6 +294,27 @@ def test_work_list_show_and_complete_manage_local_work_item_lifecycle(
     assert show_payload["work_item"]["title"] == "First Slice"
     assert show_payload["work_item"]["status"] == "planned"
 
+    note_exit_code = main(
+        [
+            "work",
+            "note",
+            "--slug",
+            "first_slice",
+            "--message",
+            "Resume with the local-first CLI follow-up.",
+            "--format",
+            "json",
+        ]
+    )
+    note_payload = json.loads(capsys.readouterr().out)
+
+    assert note_exit_code == 0
+    assert note_payload["action"] == "noted"
+    assert note_payload["note"]["note_id"] == "work_item_note.first_slice.0001"
+    assert note_payload["work_item"]["notes"][0]["message"] == (
+        "Resume with the local-first CLI follow-up."
+    )
+
     missing_exit_code = main(["work", "show", "--slug", "missing_slice", "--format", "json"])
     missing_payload = json.loads(capsys.readouterr().out)
 
@@ -276,6 +346,7 @@ def test_work_list_show_and_complete_manage_local_work_item_lifecycle(
     assert record["status"] == "completed"
     assert record["completion_summary"] == "Closed after the first delivery."
     assert "completed_at" in record
+    assert record["notes"][0]["message"] == "Resume with the local-first CLI follow-up."
 
     second_complete_exit_code = main(
         [

@@ -7,6 +7,7 @@ import json
 import sys
 from typing import Sequence
 from watchtower.work_items import (
+    append_work_item_note,
     complete_work_item,
     create_work_item,
     list_work_items,
@@ -151,6 +152,40 @@ def _run_work_show(args: argparse.Namespace) -> int:
     print(f"WatchTower work item: {work_item['slug']}")
     print(f"title: {work_item['title']}")
     print(f"status: {work_item['status']}")
+    notes = work_item.get("notes", [])
+    print(f"note_count: {len(notes)}")
+    if notes:
+        print("notes:")
+        for note in notes:
+            print(f"- {note['created_at']}: {note['message']}")
+    print(f"work_item_path: {payload['work_item_path']}")
+    return 0
+
+
+def _run_work_note(args: argparse.Namespace) -> int:
+    try:
+        work_item, note = append_work_item_note(args.slug, args.message)
+    except (RuntimeError, ValueError) as error:
+        if args.format == "json":
+            print(json.dumps({"status": "error", "message": str(error)}, indent=2))
+        else:
+            print(str(error), file=sys.stderr)
+        return 1
+
+    payload = {
+        "status": "ok",
+        "action": "noted",
+        "note": note,
+        "work_item": work_item,
+        "work_item_path": str(work_item_path(args.slug)),
+    }
+    if args.format == "json":
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    print("WatchTower work item note recorded")
+    print(f"work_item_id: {work_item['work_item_id']}")
+    print(f"note_id: {note['note_id']}")
     print(f"work_item_path: {payload['work_item_path']}")
     return 0
 
@@ -269,6 +304,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="Select human-readable or JSON output.",
     )
     work_show.set_defaults(handler=_run_work_show)
+
+    work_note = work_subparsers.add_parser(
+        "note",
+        help="Append one note to an existing local work-item record.",
+    )
+    work_note.add_argument("--slug", required=True, help="Stable work-item slug.")
+    work_note.add_argument(
+        "--message",
+        required=True,
+        help="Note text to append to the work-item record.",
+    )
+    work_note.add_argument(
+        "--format",
+        choices=("human", "json"),
+        default="human",
+        help="Select human-readable or JSON output.",
+    )
+    work_note.set_defaults(handler=_run_work_note)
 
     work_complete = work_subparsers.add_parser(
         "complete",

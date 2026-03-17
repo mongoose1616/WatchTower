@@ -23,10 +23,7 @@ def work_item_path(slug: str, repo_root: Path | None = None) -> Path:
 def load_work_item(slug: str, repo_root: Path | None = None) -> dict[str, object]:
     root = repo_root or resolve_repo_root()
     _require_workspace_manifest(root)
-    path = work_item_path(slug, root)
-    if not path.exists():
-        raise ValueError(f"Unknown work item: {slug}")
-    return json.loads(path.read_text(encoding="utf-8"))
+    return _load_existing_work_item(slug, root)
 
 
 def list_work_items(repo_root: Path | None = None) -> list[dict[str, object]]:
@@ -77,10 +74,7 @@ def complete_work_item(
     _require_workspace_manifest(root)
 
     path = work_item_path(slug, root)
-    if not path.exists():
-        raise ValueError(f"Unknown work item: {slug}")
-
-    document = json.loads(path.read_text(encoding="utf-8"))
+    document = _load_existing_work_item(slug, root)
     if document.get("status") == "completed":
         return document, False
 
@@ -95,8 +89,44 @@ def complete_work_item(
     return document, True
 
 
+def append_work_item_note(
+    slug: str,
+    message: str,
+    repo_root: Path | None = None,
+) -> tuple[dict[str, object], dict[str, object]]:
+    normalized_message = message.strip()
+    if not normalized_message:
+        raise ValueError("Work item note message must not be empty.")
+
+    root = repo_root or resolve_repo_root()
+    _require_workspace_manifest(root)
+
+    path = work_item_path(slug, root)
+    document = _load_existing_work_item(slug, root)
+    timestamp = utc_timestamp_now()
+    notes = list(document.get("notes", []))
+    note = {
+        "note_id": f"work_item_note.{slug}.{len(notes) + 1:04d}",
+        "created_at": timestamp,
+        "message": normalized_message,
+    }
+    notes.append(note)
+    document["notes"] = notes
+    document["updated_at"] = timestamp
+
+    path.write_text(f"{json.dumps(document, indent=2)}\n", encoding="utf-8")
+    return document, note
+
+
 def _require_workspace_manifest(repo_root: Path) -> dict[str, object]:
     manifest = load_workspace_manifest(repo_root)
     if manifest is None:
         raise RuntimeError("WatchTower workspace is not initialized. Run `watchtower init` first.")
     return manifest
+
+
+def _load_existing_work_item(slug: str, repo_root: Path) -> dict[str, object]:
+    path = work_item_path(slug, repo_root)
+    if not path.exists():
+        raise ValueError(f"Unknown work item: {slug}")
+    return json.loads(path.read_text(encoding="utf-8"))
