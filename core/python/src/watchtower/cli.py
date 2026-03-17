@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from typing import Sequence
+from watchtower.work_items import create_work_item, work_item_path
 from watchtower.workspace import doctor_payload, ensure_workspace_manifest
 
 
@@ -43,6 +45,33 @@ def _run_init(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_work_start(args: argparse.Namespace) -> int:
+    try:
+        work_item, created = create_work_item(args.slug, args.title)
+    except (RuntimeError, ValueError) as error:
+        if args.format == "json":
+            print(json.dumps({"status": "error", "message": str(error)}, indent=2))
+        else:
+            print(str(error), file=sys.stderr)
+        return 1
+
+    payload = {
+        "status": "ok",
+        "action": "created" if created else "exists",
+        "work_item": work_item,
+        "work_item_path": str(work_item_path(args.slug)),
+    }
+    if args.format == "json":
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    action = "created" if created else "already exists"
+    print(f"WatchTower work item {action}")
+    print(f"work_item_id: {work_item['work_item_id']}")
+    print(f"work_item_path: {payload['work_item_path']}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="watchtower",
@@ -73,6 +102,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="Select human-readable or JSON output.",
     )
     init.set_defaults(handler=_run_init)
+
+    work = subparsers.add_parser(
+        "work",
+        help="Manage local WatchTower work-item records.",
+    )
+    work_subparsers = work.add_subparsers(dest="work_command", required=True)
+
+    work_start = work_subparsers.add_parser(
+        "start",
+        help="Create a local work-item record inside the initialized workspace.",
+    )
+    work_start.add_argument("--slug", required=True, help="Stable work-item slug.")
+    work_start.add_argument("--title", required=True, help="Human-readable work-item title.")
+    work_start.add_argument(
+        "--format",
+        choices=("human", "json"),
+        default="human",
+        help="Select human-readable or JSON output.",
+    )
+    work_start.set_defaults(handler=_run_work_start)
     return parser
 
 

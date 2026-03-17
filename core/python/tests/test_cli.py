@@ -65,3 +65,79 @@ def test_init_json_creates_manifest_and_doctor_reports_initialized(
 
     assert second_init_exit_code == 0
     assert second_init_payload["action"] == "exists"
+
+
+def test_work_start_requires_initialized_workspace(
+    capsys,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo_root = _prepare_repo_root(tmp_path)
+    monkeypatch.setenv("WATCHTOWER_REPO_ROOT", str(repo_root))
+
+    exit_code = main(
+        [
+            "work",
+            "start",
+            "--slug",
+            "first_slice",
+            "--title",
+            "First Slice",
+            "--format",
+            "json",
+        ]
+    )
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert payload["status"] == "error"
+    assert "watchtower init" in payload["message"].lower()
+
+
+def test_work_start_json_creates_work_item_record(
+    capsys,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo_root = _prepare_repo_root(tmp_path)
+    monkeypatch.setenv("WATCHTOWER_REPO_ROOT", str(repo_root))
+    assert main(["init", "--format", "json"]) == 0
+    capsys.readouterr()
+
+    exit_code = main(
+        [
+            "work",
+            "start",
+            "--slug",
+            "first_slice",
+            "--title",
+            "First Slice",
+            "--format",
+            "json",
+        ]
+    )
+    payload = json.loads(capsys.readouterr().out)
+    record_path = repo_root / ".watchtower" / "work_items" / "first_slice.json"
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert payload["action"] == "created"
+    assert record["work_item_id"] == "work_item.first_slice"
+    assert record["status"] == "planned"
+
+    second_exit_code = main(
+        [
+            "work",
+            "start",
+            "--slug",
+            "first_slice",
+            "--title",
+            "First Slice",
+            "--format",
+            "json",
+        ]
+    )
+    second_payload = json.loads(capsys.readouterr().out)
+
+    assert second_exit_code == 0
+    assert second_payload["action"] == "exists"

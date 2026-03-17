@@ -37,12 +37,22 @@ python -m watchtower.cli init --format json
 
 ```sh
 cd core/python
+python -m watchtower.cli work start --slug first_slice --title "First Slice"
+```
+
+```sh
+cd core/python
+python -m watchtower.cli work start --slug first_slice --title "First Slice" --format json
+```
+
+```sh
+cd core/python
 python -m pytest
 ```
 
 ## Notes
 
 - The current bootstrap keeps the workspace dependency-light.
-- The first CLI surfaces are `watchtower doctor` and `watchtower init`.
+- The first CLI surfaces are `watchtower doctor`, `watchtower init`, and `watchtower work start`.
 - Local managed workspace state lives under `.watchtower/`.
 - Later slices can add richer workflow commands once the product boundary is better defined.
