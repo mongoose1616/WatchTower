@@ -12,6 +12,7 @@ from watchtower.work_items import (
     create_work_item,
     list_work_items,
     load_work_item,
+    select_next_work_item,
     work_item_path,
 )
 from watchtower.status import status_payload
@@ -127,6 +128,45 @@ def _run_work_list(args: argparse.Namespace) -> int:
     print(f"WatchTower work items: {len(work_items)}")
     for work_item in work_items:
         print(f"- {work_item['slug']}: {work_item['status']} :: {work_item['title']}")
+    return 0
+
+
+def _run_work_next(args: argparse.Namespace) -> int:
+    try:
+        work_item, latest_note = select_next_work_item()
+    except (RuntimeError, ValueError) as error:
+        if args.format == "json":
+            print(json.dumps({"status": "error", "message": str(error)}, indent=2))
+        else:
+            print(str(error), file=sys.stderr)
+        return 1
+
+    payload = {"status": "ok"}
+    if work_item is None:
+        payload["action"] = "none_available"
+        payload["work_item"] = None
+        payload["latest_note"] = None
+        if args.format == "json":
+            print(json.dumps(payload, indent=2))
+            return 0
+        print("WatchTower next work: none available")
+        return 0
+
+    payload["action"] = "selected"
+    payload["work_item"] = work_item
+    payload["latest_note"] = latest_note
+    payload["work_item_path"] = str(work_item_path(str(work_item["slug"])))
+    if args.format == "json":
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    print("WatchTower next work")
+    print(f"slug: {work_item['slug']}")
+    print(f"title: {work_item['title']}")
+    print(f"status: {work_item['status']}")
+    if latest_note is not None:
+        print(f"latest_note: {latest_note['message']}")
+    print(f"work_item_path: {payload['work_item_path']}")
     return 0
 
 
@@ -291,6 +331,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Select human-readable or JSON output.",
     )
     work_list.set_defaults(handler=_run_work_list)
+
+    work_next = work_subparsers.add_parser(
+        "next",
+        help="Select the next unfinished local work-item record to resume.",
+    )
+    work_next.add_argument(
+        "--format",
+        choices=("human", "json"),
+        default="human",
+        help="Select human-readable or JSON output.",
+    )
+    work_next.set_defaults(handler=_run_work_next)
 
     work_show = work_subparsers.add_parser(
         "show",

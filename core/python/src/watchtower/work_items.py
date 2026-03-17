@@ -35,6 +35,30 @@ def list_work_items(repo_root: Path | None = None) -> list[dict[str, object]]:
     return items
 
 
+def select_next_work_item(
+    repo_root: Path | None = None,
+) -> tuple[dict[str, object] | None, dict[str, object] | None]:
+    root = repo_root or resolve_repo_root()
+    work_items = list_work_items(root)
+    unfinished = [
+        item for item in work_items if str(item.get("status")) != "completed"
+    ]
+    if not unfinished:
+        return None, None
+
+    work_item = sorted(
+        unfinished,
+        key=lambda item: (
+            str(item.get("updated_at", "")),
+            str(item.get("slug", "")),
+        ),
+        reverse=True,
+    )[0]
+    notes = work_item.get("notes", [])
+    latest_note = notes[-1] if notes else None
+    return work_item, latest_note
+
+
 def create_work_item(
     slug: str,
     title: str,

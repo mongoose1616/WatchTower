@@ -14,6 +14,7 @@ AVAILABLE_COMMANDS = (
     "init",
     "work start",
     "work list",
+    "work next",
     "work show",
     "work note",
     "work complete",
@@ -42,7 +43,7 @@ def manifest_path(repo_root: Path | None = None) -> Path:
 
 
 def utc_timestamp_now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
 def load_workspace_manifest(repo_root: Path | None = None) -> dict[str, object] | None:

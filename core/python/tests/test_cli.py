@@ -36,6 +36,7 @@ def test_doctor_json_reports_repo_bootstrap_status(
         "init",
         "work start",
         "work list",
+        "work next",
         "work show",
         "work note",
         "work complete",
@@ -90,6 +91,32 @@ def test_work_list_requires_initialized_workspace(
     assert exit_code == 1
     assert payload["status"] == "error"
     assert "watchtower init" in payload["message"].lower()
+
+
+def test_work_next_handles_missing_workspace_and_empty_queue(
+    capsys,
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo_root = _prepare_repo_root(tmp_path)
+    monkeypatch.setenv("WATCHTOWER_REPO_ROOT", str(repo_root))
+
+    exit_code = main(["work", "next", "--format", "json"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert exit_code == 1
+    assert payload["status"] == "error"
+    assert "watchtower init" in payload["message"].lower()
+
+    assert main(["init", "--format", "json"]) == 0
+    capsys.readouterr()
+
+    empty_exit_code = main(["work", "next", "--format", "json"])
+    empty_payload = json.loads(capsys.readouterr().out)
+
+    assert empty_exit_code == 0
+    assert empty_payload["action"] == "none_available"
+    assert empty_payload["work_item"] is None
 
 
 def test_status_json_reports_missing_workspace_and_zero_work_items(
@@ -277,23 +304,6 @@ def test_work_list_show_and_complete_manage_local_work_item_lifecycle(
     )
     capsys.readouterr()
 
-    list_exit_code = main(["work", "list", "--format", "json"])
-    list_payload = json.loads(capsys.readouterr().out)
-
-    assert list_exit_code == 0
-    assert list_payload["work_item_count"] == 2
-    assert [item["slug"] for item in list_payload["work_items"]] == [
-        "first_slice",
-        "second_slice",
-    ]
-
-    show_exit_code = main(["work", "show", "--slug", "first_slice", "--format", "json"])
-    show_payload = json.loads(capsys.readouterr().out)
-
-    assert show_exit_code == 0
-    assert show_payload["work_item"]["title"] == "First Slice"
-    assert show_payload["work_item"]["status"] == "planned"
-
     note_exit_code = main(
         [
             "work",
@@ -312,6 +322,33 @@ def test_work_list_show_and_complete_manage_local_work_item_lifecycle(
     assert note_payload["action"] == "noted"
     assert note_payload["note"]["note_id"] == "work_item_note.first_slice.0001"
     assert note_payload["work_item"]["notes"][0]["message"] == (
+        "Resume with the local-first CLI follow-up."
+    )
+
+    list_exit_code = main(["work", "list", "--format", "json"])
+    list_payload = json.loads(capsys.readouterr().out)
+
+    assert list_exit_code == 0
+    assert list_payload["work_item_count"] == 2
+    assert [item["slug"] for item in list_payload["work_items"]] == [
+        "first_slice",
+        "second_slice",
+    ]
+
+    show_exit_code = main(["work", "show", "--slug", "first_slice", "--format", "json"])
+    show_payload = json.loads(capsys.readouterr().out)
+
+    assert show_exit_code == 0
+    assert show_payload["work_item"]["title"] == "First Slice"
+    assert show_payload["work_item"]["status"] == "planned"
+
+    next_exit_code = main(["work", "next", "--format", "json"])
+    next_payload = json.loads(capsys.readouterr().out)
+
+    assert next_exit_code == 0
+    assert next_payload["action"] == "selected"
+    assert next_payload["work_item"]["slug"] == "first_slice"
+    assert next_payload["latest_note"]["message"] == (
         "Resume with the local-first CLI follow-up."
     )
 
