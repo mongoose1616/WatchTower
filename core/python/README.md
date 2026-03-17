@@ -27,11 +27,22 @@ python -m watchtower.cli doctor --format json
 
 ```sh
 cd core/python
+python -m watchtower.cli init
+```
+
+```sh
+cd core/python
+python -m watchtower.cli init --format json
+```
+
+```sh
+cd core/python
 python -m pytest
 ```
 
 ## Notes
 
 - The current bootstrap keeps the workspace dependency-light.
-- The first CLI surface is `watchtower doctor`.
+- The first CLI surfaces are `watchtower doctor` and `watchtower init`.
+- Local managed workspace state lives under `.watchtower/`.
 - Later slices can add richer workflow commands once the product boundary is better defined.

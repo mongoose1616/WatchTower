@@ -8,8 +8,9 @@ This repository is in bootstrap mode. The current slice establishes:
 
 - root repo guidance
 - one Python workspace under `core/python/`
-- one minimal `watchtower doctor` CLI command
-- one smoke test proving the bootstrap entrypoint works
+- one local `.watchtower/workspace.json` manifest path
+- `watchtower doctor` and `watchtower init` CLI commands
+- CLI smoke tests proving both bootstrap and initialized workspace states work
 
 ## Start Here
 
