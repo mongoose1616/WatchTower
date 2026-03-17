@@ -10,8 +10,8 @@ This repository is in bootstrap mode. The current slice establishes:
 - one Python workspace under `core/python/`
 - one local `.watchtower/workspace.json` manifest path
 - one local `.watchtower/work_items/` record path
-- `watchtower doctor`, `watchtower init`, and `watchtower work start` CLI commands
-- CLI smoke tests proving bootstrap, initialized workspace, and work-item start states work
+- `watchtower doctor`, `watchtower init`, `watchtower work start`, `watchtower work list`, `watchtower work show`, and `watchtower work complete` CLI commands
+- CLI smoke tests proving bootstrap, initialized workspace, work-item start, work-item inspection, and work-item completion states work
 
 ## Start Here
 

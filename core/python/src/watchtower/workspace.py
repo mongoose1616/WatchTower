@@ -8,6 +8,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 _REPO_ROOT_ENV = "WATCHTOWER_REPO_ROOT"
+AVAILABLE_COMMANDS = (
+    "doctor",
+    "init",
+    "work start",
+    "work list",
+    "work show",
+    "work complete",
+)
 
 
 def resolve_repo_root() -> Path:
@@ -76,7 +84,7 @@ def doctor_payload(repo_root: Path | None = None) -> dict[str, object]:
         "workspace_root": str(workspace_root(root)),
         "state_root": str(state_root(root)),
         "workspace_manifest_path": str(manifest_path(root)),
-        "available_commands": ["doctor", "init"],
+        "available_commands": list(AVAILABLE_COMMANDS),
     }
     if manifest is None:
         payload["bootstrap_stage"] = "repo_bootstrap"

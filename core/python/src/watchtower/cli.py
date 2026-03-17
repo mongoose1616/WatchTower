@@ -6,8 +6,14 @@ import argparse
 import json
 import sys
 from typing import Sequence
-from watchtower.work_items import create_work_item, work_item_path
-from watchtower.workspace import doctor_payload, ensure_workspace_manifest
+from watchtower.work_items import (
+    complete_work_item,
+    create_work_item,
+    list_work_items,
+    load_work_item,
+    work_item_path,
+)
+from watchtower.workspace import AVAILABLE_COMMANDS, doctor_payload, ensure_workspace_manifest
 
 
 def _run_doctor(args: argparse.Namespace) -> int:
@@ -22,7 +28,7 @@ def _run_doctor(args: argparse.Namespace) -> int:
     print(f"state_root: {payload['state_root']}")
     print(f"bootstrap_stage: {payload['bootstrap_stage']}")
     print(f"workspace_status: {payload['workspace_status']}")
-    print("available_commands: doctor, init")
+    print(f"available_commands: {', '.join(AVAILABLE_COMMANDS)}")
     return 0
 
 
@@ -32,7 +38,7 @@ def _run_init(args: argparse.Namespace) -> int:
         "status": "ok",
         "action": "created" if created else "exists",
         "workspace_manifest": manifest,
-        "available_commands": ["doctor", "init"],
+        "available_commands": list(AVAILABLE_COMMANDS),
     }
     if args.format == "json":
         print(json.dumps(payload, indent=2))
@@ -66,6 +72,84 @@ def _run_work_start(args: argparse.Namespace) -> int:
         return 0
 
     action = "created" if created else "already exists"
+    print(f"WatchTower work item {action}")
+    print(f"work_item_id: {work_item['work_item_id']}")
+    print(f"work_item_path: {payload['work_item_path']}")
+    return 0
+
+
+def _run_work_list(args: argparse.Namespace) -> int:
+    try:
+        work_items = list_work_items()
+    except (RuntimeError, ValueError) as error:
+        if args.format == "json":
+            print(json.dumps({"status": "error", "message": str(error)}, indent=2))
+        else:
+            print(str(error), file=sys.stderr)
+        return 1
+
+    payload = {
+        "status": "ok",
+        "work_item_count": len(work_items),
+        "work_items": work_items,
+    }
+    if args.format == "json":
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    print(f"WatchTower work items: {len(work_items)}")
+    for work_item in work_items:
+        print(f"- {work_item['slug']}: {work_item['status']} :: {work_item['title']}")
+    return 0
+
+
+def _run_work_show(args: argparse.Namespace) -> int:
+    try:
+        work_item = load_work_item(args.slug)
+    except (RuntimeError, ValueError) as error:
+        if args.format == "json":
+            print(json.dumps({"status": "error", "message": str(error)}, indent=2))
+        else:
+            print(str(error), file=sys.stderr)
+        return 1
+
+    payload = {
+        "status": "ok",
+        "work_item": work_item,
+        "work_item_path": str(work_item_path(args.slug)),
+    }
+    if args.format == "json":
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    print(f"WatchTower work item: {work_item['slug']}")
+    print(f"title: {work_item['title']}")
+    print(f"status: {work_item['status']}")
+    print(f"work_item_path: {payload['work_item_path']}")
+    return 0
+
+
+def _run_work_complete(args: argparse.Namespace) -> int:
+    try:
+        work_item, changed = complete_work_item(args.slug, summary=args.summary)
+    except (RuntimeError, ValueError) as error:
+        if args.format == "json":
+            print(json.dumps({"status": "error", "message": str(error)}, indent=2))
+        else:
+            print(str(error), file=sys.stderr)
+        return 1
+
+    payload = {
+        "status": "ok",
+        "action": "completed" if changed else "already_completed",
+        "work_item": work_item,
+        "work_item_path": str(work_item_path(args.slug)),
+    }
+    if args.format == "json":
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    action = "completed" if changed else "already completed"
     print(f"WatchTower work item {action}")
     print(f"work_item_id: {work_item['work_item_id']}")
     print(f"work_item_path: {payload['work_item_path']}")
@@ -122,6 +206,48 @@ def build_parser() -> argparse.ArgumentParser:
         help="Select human-readable or JSON output.",
     )
     work_start.set_defaults(handler=_run_work_start)
+
+    work_list = work_subparsers.add_parser(
+        "list",
+        help="List local work-item records from the initialized workspace.",
+    )
+    work_list.add_argument(
+        "--format",
+        choices=("human", "json"),
+        default="human",
+        help="Select human-readable or JSON output.",
+    )
+    work_list.set_defaults(handler=_run_work_list)
+
+    work_show = work_subparsers.add_parser(
+        "show",
+        help="Show one local work-item record from the initialized workspace.",
+    )
+    work_show.add_argument("--slug", required=True, help="Stable work-item slug.")
+    work_show.add_argument(
+        "--format",
+        choices=("human", "json"),
+        default="human",
+        help="Select human-readable or JSON output.",
+    )
+    work_show.set_defaults(handler=_run_work_show)
+
+    work_complete = work_subparsers.add_parser(
+        "complete",
+        help="Mark one local work-item record completed.",
+    )
+    work_complete.add_argument("--slug", required=True, help="Stable work-item slug.")
+    work_complete.add_argument(
+        "--summary",
+        help="Optional closeout summary recorded on the completed work item.",
+    )
+    work_complete.add_argument(
+        "--format",
+        choices=("human", "json"),
+        default="human",
+        help="Select human-readable or JSON output.",
+    )
+    work_complete.set_defaults(handler=_run_work_complete)
     return parser
 
 
