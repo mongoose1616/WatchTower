@@ -13,6 +13,7 @@ AVAILABLE_COMMANDS = (
     "status",
     "init",
     "work start",
+    "work begin",
     "work list",
     "work next",
     "work show",

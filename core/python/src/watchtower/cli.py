@@ -8,6 +8,7 @@ import sys
 from typing import Sequence
 from watchtower.work_items import (
     append_work_item_note,
+    begin_work_item,
     complete_work_item,
     create_work_item,
     list_work_items,
@@ -100,6 +101,33 @@ def _run_work_start(args: argparse.Namespace) -> int:
         return 0
 
     action = "created" if created else "already exists"
+    print(f"WatchTower work item {action}")
+    print(f"work_item_id: {work_item['work_item_id']}")
+    print(f"work_item_path: {payload['work_item_path']}")
+    return 0
+
+
+def _run_work_begin(args: argparse.Namespace) -> int:
+    try:
+        work_item, changed = begin_work_item(args.slug)
+    except (RuntimeError, ValueError) as error:
+        if args.format == "json":
+            print(json.dumps({"status": "error", "message": str(error)}, indent=2))
+        else:
+            print(str(error), file=sys.stderr)
+        return 1
+
+    payload = {
+        "status": "ok",
+        "action": "begun" if changed else "already_in_progress",
+        "work_item": work_item,
+        "work_item_path": str(work_item_path(args.slug)),
+    }
+    if args.format == "json":
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    action = "begun" if changed else "already in progress"
     print(f"WatchTower work item {action}")
     print(f"work_item_id: {work_item['work_item_id']}")
     print(f"work_item_path: {payload['work_item_path']}")
@@ -319,6 +347,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="Select human-readable or JSON output.",
     )
     work_start.set_defaults(handler=_run_work_start)
+
+    work_begin = work_subparsers.add_parser(
+        "begin",
+        help="Mark one local work-item record in progress.",
+    )
+    work_begin.add_argument("--slug", required=True, help="Stable work-item slug.")
+    work_begin.add_argument(
+        "--format",
+        choices=("human", "json"),
+        default="human",
+        help="Select human-readable or JSON output.",
+    )
+    work_begin.set_defaults(handler=_run_work_begin)
 
     work_list = work_subparsers.add_parser(
         "list",

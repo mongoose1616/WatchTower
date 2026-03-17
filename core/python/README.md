@@ -57,6 +57,16 @@ python -m watchtower.cli work start --slug first_slice --title "First Slice" --f
 
 ```sh
 cd core/python
+python -m watchtower.cli work begin --slug first_slice
+```
+
+```sh
+cd core/python
+python -m watchtower.cli work begin --slug first_slice --format json
+```
+
+```sh
+cd core/python
 python -m watchtower.cli work list
 ```
 
@@ -113,7 +123,7 @@ python -m pytest
 ## Notes
 
 - The current bootstrap keeps the workspace dependency-light.
-- The current CLI surfaces are `watchtower doctor`, `watchtower status`, `watchtower init`, `watchtower work start`, `watchtower work list`, `watchtower work next`, `watchtower work show`, `watchtower work note`, and `watchtower work complete`.
+- The current CLI surfaces are `watchtower doctor`, `watchtower status`, `watchtower init`, `watchtower work start`, `watchtower work begin`, `watchtower work list`, `watchtower work next`, `watchtower work show`, `watchtower work note`, and `watchtower work complete`.
 - The current `watchtower work ...` surface is a bootstrap-stage local work-item contract derived from `/home/j/WatchTowerPlan/requirements.md` and `/home/j/WatchTowerPlan/decisions.md`; treat the work-item concept as intentional, but the exact CLI shape as provisional until a later slice stabilizes it.
 - Local managed workspace state lives under `.watchtower/`.
 - New WatchTower behavior should remain aligned to `/home/j/WatchTowerPlan/requirements.md` and `/home/j/WatchTowerPlan/decisions.md`.

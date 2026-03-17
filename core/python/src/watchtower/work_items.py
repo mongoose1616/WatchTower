@@ -89,6 +89,30 @@ def create_work_item(
     return document, True
 
 
+def begin_work_item(
+    slug: str,
+    repo_root: Path | None = None,
+) -> tuple[dict[str, object], bool]:
+    root = repo_root or resolve_repo_root()
+    _require_workspace_manifest(root)
+
+    path = work_item_path(slug, root)
+    document = _load_existing_work_item(slug, root)
+    status = str(document.get("status"))
+    if status == "completed":
+        raise ValueError(f"Completed work item cannot be begun again: {slug}")
+    if status == "in_progress":
+        return document, False
+
+    timestamp = utc_timestamp_now()
+    document["status"] = "in_progress"
+    document["updated_at"] = timestamp
+    document.setdefault("started_at", timestamp)
+
+    path.write_text(f"{json.dumps(document, indent=2)}\n", encoding="utf-8")
+    return document, True
+
+
 def complete_work_item(
     slug: str,
     summary: str | None = None,
